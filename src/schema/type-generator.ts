@@ -144,9 +144,10 @@ function buildModuleBlock(schema: ModuleSchema): string[] {
 function getAutoColumns(t: TableDef): string[] {
   const auto: string[] = [];
   for (const [name, col] of Object.entries(t.columns)) {
-    // Any column with a database default is optional on Insert — Postgres
-    // fills it when omitted. (Generated columns are handled separately.)
-    if (col.defaultExpr != null) {
+    // Optional on Insert when Postgres can fill the column itself: a database
+    // default, or nullable (defaults to NULL). Generated columns are handled
+    // separately.
+    if (col.defaultExpr != null || col.isNullable) {
       auto.push(name);
     }
   }

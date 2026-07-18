@@ -64,9 +64,9 @@ describe('generateTypes', () => {
     expect(output).toContain('  weight: number | null;'); // double precision
   });
 
-  it('excludes generated columns from Insert via Omit + `?: never`, and makes auto columns optional', () => {
+  it('excludes generated columns from Insert via Omit + `?: never`, and makes defaulted/nullable columns optional', () => {
     expect(output).toContain(
-      `export type DemoItemsInsert =\n  Omit<DemoItemsRow, 'line_total' | 'id' | 'created_at' | 'updated_at'>\n  & { line_total?: never }\n  & Partial<Pick<DemoItemsRow, 'id' | 'created_at' | 'updated_at'>>;`
+      `export type DemoItemsInsert =\n  Omit<DemoItemsRow, 'line_total' | 'id' | 'description' | 'owner_id' | 'payload' | 'last_ip' | 'active_for' | 'rating' | 'weight' | 'created_at' | 'updated_at'>\n  & { line_total?: never }\n  & Partial<Pick<DemoItemsRow, 'id' | 'description' | 'owner_id' | 'payload' | 'last_ip' | 'active_for' | 'rating' | 'weight' | 'created_at' | 'updated_at'>>;`
     );
   });
 
