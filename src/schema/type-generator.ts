@@ -144,13 +144,9 @@ function buildModuleBlock(schema: ModuleSchema): string[] {
 function getAutoColumns(t: TableDef): string[] {
   const auto: string[] = [];
   for (const [name, col] of Object.entries(t.columns)) {
-    // Auto if PK with default OR timestamp(tz) with NOW()-family default
-    if (col.isPrimaryKey && col.defaultExpr) {
-      auto.push(name);
-    } else if (
-      (col.pgType === 'TIMESTAMPTZ' || col.pgType === 'TIMESTAMP') &&
-      col.defaultExpr?.toUpperCase().includes('NOW')
-    ) {
+    // Any column with a database default is optional on Insert — Postgres
+    // fills it when omitted. (Generated columns are handled separately.)
+    if (col.defaultExpr != null) {
       auto.push(name);
     }
   }
