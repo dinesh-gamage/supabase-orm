@@ -11,7 +11,7 @@ import { diff } from '../schema/differ.js';
 import { generateSql, describeChange } from '../schema/sql-generator.js';
 import { generateTypes } from '../schema/type-generator.js';
 import { introspectSchema } from '../schema/introspector.js';
-import type { DiffChange } from '../schema/types.js';
+import type { DiffChange, TableDef } from '../schema/types.js';
 import { splitSqlStatements } from '../migrate/splitter.js';
 import { MigrationRunner } from '../migrate/runner.js';
 import { generateBootstrapSql } from '../migrate/bootstrap.js';
@@ -33,6 +33,20 @@ function withErrorHandling(fn: (...args: any[]) => Promise<void>) {
       process.exitCode = 1;
     }
   };
+}
+
+// A `renamedFrom` table hint only becomes detectable if the OLD name is also
+// introspected — the differ matches the desired table's renamedFrom against
+// a live table under that old name. Without this, a table rename is
+// indistinguishable from `create_table` (the old name is simply never asked
+// about) and the rename workflow described in the README silently fails.
+function tableNamesForIntrospection(tables: TableDef[]): string[] {
+  const names = new Set<string>();
+  for (const t of tables) {
+    names.add(t.tableName);
+    if (t.renamedFrom) names.add(t.renamedFrom);
+  }
+  return [...names];
 }
 
 function tagFor(c: DiffChange): string {
@@ -145,7 +159,7 @@ program
       const results: ModuleDiffResult[] = [];
       for (const module of modules) {
         const db = await loadModuleDatabase(module, ctx.config.aliases, ctx.config.configDir);
-        const tableNames = db.schema.tables.map((t) => t.tableName);
+        const tableNames = tableNamesForIntrospection(db.schema.tables);
         const functionNames = db.functions.map((f) => f.name);
         const live = await introspectSchema(ctx.getExecutor(), tableNames, functionNames);
         const result = diff(db.schema, live, db.functions, db.triggers, db.policies);
@@ -207,7 +221,7 @@ program
 
         for (const module of modules) {
           const db = await loadModuleDatabase(module, ctx.config.aliases, ctx.config.configDir);
-          const tableNames = db.schema.tables.map((t) => t.tableName);
+          const tableNames = tableNamesForIntrospection(db.schema.tables);
           const functionNames = db.functions.map((f) => f.name);
           const live = await introspectSchema(ctx.getExecutor(), tableNames, functionNames);
           const result = diff(db.schema, live, db.functions, db.triggers, db.policies);
@@ -357,7 +371,7 @@ program
         const toPush: PushItem[] = [];
         for (const module of modules) {
           const db = await loadModuleDatabase(module, ctx.config.aliases, ctx.config.configDir);
-          const tableNames = db.schema.tables.map((t) => t.tableName);
+          const tableNames = tableNamesForIntrospection(db.schema.tables);
           const functionNames = db.functions.map((f) => f.name);
           const live = await introspectSchema(ctx.getExecutor(), tableNames, functionNames);
           const result = diff(db.schema, live, db.functions, db.triggers, db.policies);

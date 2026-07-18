@@ -223,6 +223,11 @@ export type DiffChangeKind =
   // renames (safe — metadata only)
   | 'rename_table'
   | 'rename_column'
+  // Postgres doesn't rename a table's triggers on ALTER TABLE ... RENAME TO,
+  // so the auto-managed updated_at trigger needs its own explicit rename to
+  // keep matching the `update_{tableName}_updated_at` convention. Emitted
+  // alongside rename_table, not standalone.
+  | 'rename_trigger'
   // functions
   | 'create_function'
   | 'alter_function'

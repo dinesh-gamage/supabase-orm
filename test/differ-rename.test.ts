@@ -217,6 +217,72 @@ describe('diff — table rename', () => {
     expect(result.changes.find((c) => c.kind === 'drop_table')).toBeUndefined();
   });
 
+  it('table rename with an existing updated_at trigger also emits rename_trigger (old table name -> new)', () => {
+    const desired = defineSchema('t', [
+      table('t_new_name', {
+        id: col.uuid().primaryKey().default('gen_random_uuid()'),
+        name: col.text().notNull(),
+        updated_at: col.timestamptz().notNull().default('NOW()'),
+      }).renamedFrom('t_old_name'),
+    ]);
+    const oldLiveTable: LiveTable = {
+      tableName: 't_old_name',
+      columns: [
+        { columnName: 'id', pgType: 'UUID', isNullable: false, isPrimaryKey: true, defaultExpr: 'gen_random_uuid()', isUnique: false, isGenerated: false, reference: null },
+        { columnName: 'name', pgType: 'TEXT', isNullable: false, isPrimaryKey: false, defaultExpr: null, isUnique: false, isGenerated: false, reference: null },
+        { columnName: 'updated_at', pgType: 'TIMESTAMPTZ', isNullable: false, isPrimaryKey: false, defaultExpr: 'NOW()', isUnique: false, isGenerated: false, reference: null },
+      ],
+      indexes: [],
+      checks: [],
+      rlsEnabled: false,
+      rlsPolicies: [],
+      // Auto-managed trigger already exists — under the OLD table name, since
+      // Postgres never renames triggers as part of ALTER TABLE ... RENAME TO.
+      hasTrigger: true,
+    };
+
+    const result = diff(desired, emptyLive([oldLiveTable]));
+
+    expect(result.changes.find((c) => c.kind === 'rename_table')).toBeDefined();
+    expect(result.changes.find((c) => c.kind === 'add_trigger')).toBeUndefined();
+    expect(result.changes.find((c) => c.kind === 'rename_trigger')).toMatchObject({
+      kind: 'rename_trigger',
+      tableName: 't_new_name',
+      triggerName: 'update_t_new_name_updated_at',
+      renamedFrom: 'update_t_old_name_updated_at',
+      category: 'safe',
+    });
+  });
+
+  it('table rename with no existing trigger still emits add_trigger (not rename_trigger)', () => {
+    const desired = defineSchema('t', [
+      table('t_new_name', {
+        id: col.uuid().primaryKey().default('gen_random_uuid()'),
+        updated_at: col.timestamptz().notNull().default('NOW()'),
+      }).renamedFrom('t_old_name'),
+    ]);
+    const oldLiveTable: LiveTable = {
+      tableName: 't_old_name',
+      columns: [
+        { columnName: 'id', pgType: 'UUID', isNullable: false, isPrimaryKey: true, defaultExpr: 'gen_random_uuid()', isUnique: false, isGenerated: false, reference: null },
+        { columnName: 'updated_at', pgType: 'TIMESTAMPTZ', isNullable: false, isPrimaryKey: false, defaultExpr: 'NOW()', isUnique: false, isGenerated: false, reference: null },
+      ],
+      indexes: [],
+      checks: [],
+      rlsEnabled: false,
+      rlsPolicies: [],
+      hasTrigger: false,
+    };
+
+    const result = diff(desired, emptyLive([oldLiveTable]));
+
+    expect(result.changes.find((c) => c.kind === 'rename_trigger')).toBeUndefined();
+    expect(result.changes.find((c) => c.kind === 'add_trigger')).toMatchObject({
+      kind: 'add_trigger',
+      tableName: 't_new_name',
+    });
+  });
+
   it('inert table rename hint: new name already exists live -> no rename change, staleHints entry', () => {
     const desiredTableDef = table('t_new_name', {
       id: col.uuid().primaryKey().default('gen_random_uuid()'),

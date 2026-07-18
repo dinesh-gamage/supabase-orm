@@ -149,7 +149,24 @@ function diffTables(desired: ModuleSchema, live: LiveSchema, changes: DiffChange
         diffColumns(desiredTable, oldLiveTable, changes, staleHints);
         diffIndexes(desiredTable, oldLiveTable, changes);
         diffRls(desiredTable, oldLiveTable, changes);
-        diffTrigger(desiredTable, oldLiveTable, changes);
+        // The auto-managed updated_at trigger (if any) still carries the OLD
+        // table name — ALTER TABLE ... RENAME TO doesn't touch trigger names.
+        // Rename it in the same migration so it keeps matching the
+        // `update_{tableName}_updated_at` convention; otherwise a later diff
+        // (once the renamedFrom hint is removed) sees an unrecognized,
+        // old-named trigger and misclassifies it as an orphaned custom
+        // trigger to drop.
+        if ('updated_at' in desiredTable.columns && oldLiveTable.hasTrigger) {
+          changes.push({
+            kind: 'rename_trigger',
+            tableName: desiredTable.tableName,
+            triggerName: `update_${desiredTable.tableName}_updated_at`,
+            renamedFrom: `update_${renamedFrom}_updated_at`,
+            category: 'safe',
+          });
+        } else {
+          diffTrigger(desiredTable, oldLiveTable, changes);
+        }
         handledAsRename = true;
       }
     }

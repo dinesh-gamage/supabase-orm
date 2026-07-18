@@ -153,9 +153,15 @@ function buildStructuralSql(
 ): string | null {
   if (changes.length === 0) return null;
 
-  const renameChanges = changes.filter((c) => c.kind === 'rename_table' || c.kind === 'rename_column');
+  const renameChanges = changes.filter(
+    (c) => c.kind === 'rename_table' || c.kind === 'rename_column' || c.kind === 'rename_trigger'
+  );
   const safeChanges = changes.filter(
-    (c) => c.category === 'safe' && c.kind !== 'rename_table' && c.kind !== 'rename_column'
+    (c) =>
+      c.category === 'safe' &&
+      c.kind !== 'rename_table' &&
+      c.kind !== 'rename_column' &&
+      c.kind !== 'rename_trigger'
   );
   const destructiveChanges = changes.filter((c) => c.category === 'destructive');
   const manualChanges = changes.filter((c) => c.category === 'manual');
@@ -211,6 +217,9 @@ function buildStructuralSql(
 function buildRenameSql(c: DiffChange): string {
   if (c.kind === 'rename_table') {
     return `ALTER TABLE ${c.renamedFrom} RENAME TO ${c.tableName};`;
+  }
+  if (c.kind === 'rename_trigger') {
+    return `ALTER TRIGGER ${c.renamedFrom} ON ${c.tableName} RENAME TO ${c.triggerName};`;
   }
   // rename_column
   return `ALTER TABLE ${c.tableName} RENAME COLUMN ${c.renamedFrom} TO ${c.columnName};`;

@@ -92,6 +92,14 @@ const renameColumnChange: DiffChange = {
   category: 'safe',
 };
 
+const renameTriggerChange: DiffChange = {
+  kind: 'rename_trigger',
+  tableName: 'fin_categories',
+  triggerName: 'update_fin_categories_updated_at',
+  renamedFrom: 'update_fin_old_categories_updated_at',
+  category: 'safe',
+};
+
 describe('generateSql — default mode (destructive excluded)', () => {
   it('does not emit destructive SQL and lists excluded changes in a comment block', () => {
     const diffResult = makeDiff([addColumnChange, dropColumnChange, alterColumnTypeChange]);
@@ -137,6 +145,22 @@ describe('generateSql — default mode (destructive excluded)', () => {
     expect(commentIdx).toBeGreaterThanOrEqual(0);
     expect(renameIdx).toBeGreaterThan(commentIdx);
     expect(addColIdx).toBeGreaterThan(renameIdx);
+  });
+
+  it('emits ALTER TRIGGER for rename_trigger, after the table rename it accompanies', () => {
+    const diffResult = makeDiff([renameTableChange, renameTriggerChange, addColumnChange]);
+    const { structuralSql } = generateSql(diffResult, desiredSchema);
+    const sql = structuralSql!;
+
+    const renameTableIdx = sql.indexOf('ALTER TABLE fin_old_categories RENAME TO fin_categories;');
+    const renameTriggerIdx = sql.indexOf(
+      'ALTER TRIGGER update_fin_old_categories_updated_at ON fin_categories RENAME TO update_fin_categories_updated_at;'
+    );
+    const addColIdx = sql.indexOf('ALTER TABLE fin_categories ADD COLUMN IF NOT EXISTS created_at');
+
+    expect(renameTableIdx).toBeGreaterThanOrEqual(0);
+    expect(renameTriggerIdx).toBeGreaterThan(renameTableIdx);
+    expect(addColIdx).toBeGreaterThan(renameTriggerIdx);
   });
 });
 
