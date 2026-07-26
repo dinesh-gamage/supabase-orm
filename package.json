@@ -36,8 +36,6 @@
     "@supabase/supabase-js": "^2.0.0"
   },
   "dependencies": {
-    "@dinesh-gamage/supabase-orm": "github:dinesh-gamage/supabase-orm#v0.1.1",
-    "@dinesh-gamage/uikit": "github:dinesh-gamage/uikit#v0.2.0",
     "commander": "^13.0.0",
     "dotenv": "^16.4.0",
     "jiti": "^2.4.0"
