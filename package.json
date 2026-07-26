@@ -1,6 +1,6 @@
 {
   "name": "@dinesh-gamage/supabase-orm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Schema-as-code, safe auto-generated migrations, and typed data access for Supabase",
   "license": "MIT",
   "author": "Dinesh Gamage",
